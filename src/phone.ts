@@ -5,7 +5,19 @@ export class Phone {
     public awaitingConnection: Array<TextChannel | DMChannel | NewsChannel> = Array<TextChannel | DMChannel | NewsChannel>()
 
     public openConnection(channel: TextChannel | DMChannel | NewsChannel) {
+        let alreadyConnected: boolean = false
+
+        if (this.connections.find(connection => connection.channels.includes(channel))) {
+            alreadyConnected = true
+        }
+
+        if (this.awaitingConnection.includes(channel) || alreadyConnected) {
+            channel.send('**Please hang up before opening a new connection!**')
+            return
+        }
+
         channel.send('**Opening connection...**')
+
         if (this.awaitingConnection.length) {
             let channel2 = this.awaitingConnection.pop()
             let phoneConnection = new PhoneConnection(channel2, channel)
@@ -20,28 +32,32 @@ export class Phone {
 
     public closeConnection(channel: TextChannel | DMChannel | NewsChannel) {
         let openConnection: boolean = false
-        for (const connection of this.connections) {
-            if (connection.channels.includes(channel)) {
-                openConnection = true
-                let distChannel = connection.channels[(connection.channels.indexOf(channel) + 1) % 2]
 
-                channel.send('**You hung up the phone.**').catch(err => {
-                    console.log('Error: ', err)
-                })
+        let connection = this.connections.find(connection => connection.channels.includes(channel))
 
-                distChannel.send(`**The other party hung up the phone.**`).catch(err => {
-                    console.log('Error: ', err)
-                })
+        if (connection) {
+            openConnection = true
+            let distChannel = connection.channels[(connection.channels.indexOf(channel) + 1) % 2]
 
-                this.connections.splice(this.connections.indexOf(connection), 1)
+            channel.send('**You hung up the phone.**').catch(err => {
+                console.log('Error: ', err)
+            })
 
-                break
-            }
+            distChannel.send(`**The other party hung up the phone.**`).catch(err => {
+                console.log('Error: ', err)
+            })
+
+            this.connections.splice(this.connections.indexOf(connection), 1)
         }
 
         if (this.awaitingConnection.includes(channel)) {
             openConnection = true
             let index = this.awaitingConnection.indexOf(channel)
+
+            channel.send('**You hung up the phone.**').catch(err => {
+                console.log('Error: ', err)
+            })
+
             this.awaitingConnection.splice(index, 1)
         }
 
@@ -51,14 +67,13 @@ export class Phone {
     }
 
     public sendMessage(client: Client, message: Message) {
-        for (const connection of this.connections) {
-            if (connection.channels.includes(message.channel)) {
-                let distChannel = connection.channels[(connection.channels.indexOf(message.channel) + 1) % 2]
+        let connection = this.connections.find(connection => connection.channels.includes(message.channel))
+        if (connection) {
+            let distChannel = connection.channels[(connection.channels.indexOf(message.channel) + 1) % 2]
 
-                distChannel.send(`**${message.author.username}**: ${message.content}`).catch(err => {
-                    console.log('Error: ', err)
-                })
-            }
+            distChannel.send(`**${message.author.username}**: ${message.content}`).catch(err => {
+                console.log('Error: ', err)
+            })
         }
     }
 }
