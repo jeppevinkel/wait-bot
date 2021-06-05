@@ -33,6 +33,9 @@ export class Phone {
 
                 this.connections.splice(this.connections.indexOf(connection), 1)
             }
+            else {
+                channel.send('**There are currently no connections open to this channel.**')
+            }
         }
     }
 
