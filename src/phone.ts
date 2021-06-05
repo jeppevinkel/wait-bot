@@ -19,8 +19,10 @@ export class Phone {
     }
 
     public closeConnection(channel: TextChannel | DMChannel | NewsChannel) {
+        let openConnection: boolean = false
         for (const connection of this.connections) {
             if (connection.channels.includes(channel)) {
+                openConnection = true
                 let distChannel = connection.channels[(connection.channels.indexOf(channel) + 1) % 2]
 
                 channel.send('**You hung up the phone.**').catch(err => {
@@ -32,10 +34,19 @@ export class Phone {
                 })
 
                 this.connections.splice(this.connections.indexOf(connection), 1)
+
+                break
             }
-            else {
-                channel.send('**There are currently no connections open to this channel.**')
-            }
+        }
+
+        if (this.awaitingConnection.includes(channel)) {
+            openConnection = true
+            let index = this.awaitingConnection.indexOf(channel)
+            this.awaitingConnection.splice(index, 1)
+        }
+
+        if (!openConnection) {
+            channel.send('**There are currently no connections open to this channel.**')
         }
     }
 
