@@ -84,7 +84,6 @@ export class Phone {
                     let embed = new MessageEmbed()
                         .setAuthor(message.author.username, message.author.avatarURL())
                         .setDescription(message.content)
-                        .setTimestamp(new Date())
                     distChannel.send(embed).catch(err => {
                         console.log('Error: ', err)
                     })
