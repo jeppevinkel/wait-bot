@@ -1,47 +1,52 @@
-import {Client, Message} from "discord.js";
+import {Client, ClientOptions, Collection, Message, MessageEmbed, MessageEmbedOptions} from "discord.js";
 import {CallType, Phone} from "./phone";
+import {Command} from "./interfaces/Command";
+import {promisify} from "util";
+import * as fs from "fs";
+import * as path from "path";
+import {getFilesFromDir} from "./utils";
+import {Event} from "./interfaces/Event";
 
-export class Bot {
-    private client: Client
-    private readonly token: string
-    private phone: Phone
+export class Bot extends Client {
+    public phone: Phone = new Phone()
+    public commands: Collection<string, Command> = new Collection()
+    public events: Collection<string, Event> = new Collection()
+    public aliases: Collection<string, string> = new Collection()
+    public categories: Set<string> = new Set()
 
-    constructor(client: Client, token: string) {
-        this.client = client
+    constructor(token: string, clientOptions?: ClientOptions) {
+        super(clientOptions)
         this.token = token
-        this.phone = new Phone()
     }
 
-    public listen(): Promise<string> {
-        this.client.on('message', (message: Message) => {
-            if (message.author.bot) return
-            console.log(`${message.member.nickname}: ${message.content}`)
+    public async listen(): Promise<string> {
+        const commandFiles: string[] = await getFilesFromDir(path.resolve(__dirname, 'commands'), '.js')
+        const eventFiles: string[] = await getFilesFromDir(path.resolve(__dirname, 'events'), '.js')
 
-            if (message.content.startsWith(process.env.BOT_PREFIX)) {
-                let msg = message.content.substring(process.env.BOT_PREFIX.length)
-                let params = msg.split(' ')
-                let cmd = params.shift()
-
-                switch (cmd) {
-                    case 'call':
-                        if (params.length > 0 && params[0] == 'embed') {
-                            this.phone.openConnection(message.channel, CallType.embed)
-                        } else if (params.length > 0 && params[0] == 'anon') {
-                            this.phone.openConnection(message.channel, CallType.anonymous)
-                        } else {
-                            this.phone.openConnection(message.channel)
-                        }
-                        break
-                    case 'hangup':
-                        this.phone.closeConnection(message.channel)
-                        break
-                }
-            }
-            else {
-                this.phone.sendMessage(this.client, message)
+        commandFiles.map(async (path: string) => {
+            const file: Command = await import(path)
+            this.commands.set(file.name, file)
+            this.events.set(file.name, file)
+            this.categories.add(file.category.toLowerCase())
+            console.log(file)
+            if (file.aliases?.length) {
+                file.aliases.map((alias: string) => this.aliases.set(alias, file.name))
             }
         })
 
-        return this.client.login(this.token)
+        eventFiles.map(async (path: string) => {
+            const file: Event = await import(path)
+            this.events.set(file.name, file)
+            this.on(file.name, file.execute.bind(null, this))
+        })
+
+        return this.login(this.token)
+    }
+
+    public embed(options: MessageEmbedOptions, message: Message): MessageEmbed {
+        return new MessageEmbed({...options})
+            .setFooter(message.author.tag, message.author.displayAvatarURL())
+            .setTimestamp(new Date())
+            .setColor('YELLOW')
     }
 }

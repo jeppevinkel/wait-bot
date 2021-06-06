@@ -10,7 +10,8 @@
       "ES2020",
       "dom"
     ],
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+
   },
   "exclude": [
     "node_modules",
