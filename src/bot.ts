@@ -1,5 +1,5 @@
 import {Client, Message} from "discord.js";
-import {Phone} from "./phone";
+import {CallType, Phone} from "./phone";
 
 export class Bot {
     private client: Client
@@ -24,7 +24,13 @@ export class Bot {
 
                 switch (cmd) {
                     case 'call':
-                        this.phone.openConnection(message.channel)
+                        if (params.length > 0 && params[0] == 'embed') {
+                            this.phone.openConnection(message.channel, CallType.embed)
+                        } else if (params.length > 0 && params[0] == 'anon') {
+                            this.phone.openConnection(message.channel, CallType.anonymous)
+                        } else {
+                            this.phone.openConnection(message.channel)
+                        }
                         break
                     case 'hangup':
                         this.phone.closeConnection(message.channel)
